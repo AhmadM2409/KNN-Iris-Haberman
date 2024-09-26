@@ -1,4 +1,4 @@
-KNN Classifier for Iris Dataset
+KNN Classifier for Iris and Haberman Dataset
 Overview
 This project implements a K-Nearest Neighbors (KNN) classifier using the Iris dataset, a classic dataset in the field of machine learning. The KNN algorithm is a simple yet powerful supervised learning method used for classification tasks. The project includes advanced features such as data preprocessing, hyperparameter tuning, and cross-validation to enhance model performance.
 
