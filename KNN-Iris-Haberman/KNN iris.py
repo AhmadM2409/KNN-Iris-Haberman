@@ -1,53 +1,74 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.preprocessing import StandardScaler
-from collections import Counter
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.datasets import load_iris
+from sklearn.neighbors import KNeighborsClassifier
 
-class KNN:
+class KNNClassifier:
     def __init__(self, k=3):
         self.k = k
-        self.X_train = None
-        self.y_train = None
+        self.model = KNeighborsClassifier(n_neighbors=self.k)
 
     def fit(self, X, y):
-        self.X_train = X
-        self.y_train = y
+        self.model.fit(X, y)
 
     def predict(self, X):
-        predictions = [self._predict(x) for x in X]
-        return np.array(predictions)
+        return self.model.predict(X)
 
-    def _predict(self, x):
-        distances = np.linalg.norm(self.X_train - x, axis=1)
-        k_indices = np.argsort(distances)[:self.k]
-        k_nearest_labels = [self.y_train[i] for i in k_indices]
-        most_common = Counter(k_nearest_labels).most_common(1)
-        return most_common[0][0]
+    def score(self, X, y):
+        return self.model.score(X, y)
 
-# Load the Iris dataset from CSV
-iris_df = pd.read_csv('iris_data.csv')  
-X = iris_df.iloc[:, :-1].values  
-y = iris_df.iloc[:, -1].values  # Labels
+    def set_k(self, k):
+        self.k = k
+        self.model = KNeighborsClassifier(n_neighbors=self.k)
 
-# Convert labels to numerical values
-from sklearn.preprocessing import LabelEncoder
-label_encoder = LabelEncoder()
-y = label_encoder.fit_transform(y)
+def load_and_preprocess_data():
+    iris = load_iris()
+    X = iris.data
+    y = iris.target
+    return train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Split the dataset
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+def perform_cross_validation(model, X, y):
+    scores = cross_val_score(model, X, y, cv=5)
+    print(f'Cross-validation scores: {scores}')
+    print(f'Mean score: {scores.mean()}')
 
-# Standardize the features
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+def tune_hyperparameters(X_train, y_train):
+    param_grid = {'n_neighbors': np.arange(1, 21)}
+    grid_search = GridSearchCV(KNeighborsClassifier(), param_grid, cv=5)
+    grid_search.fit(X_train, y_train)
+    print(f'Best k: {grid_search.best_params_["n_neighbors"]}')
+    return grid_search.best_params_["n_neighbors"]
 
-# Create KNN instance and fit to the data
-knn = KNN(k=3)
-knn.fit(X_train, y_train)
+def main():
+    X_train, X_test, y_train, y_test = load_and_preprocess_data()
 
-# Predict and evaluate
-predictions = knn.predict(X_test)
-accuracy = np.mean(predictions == y_test)
-print(f'Iris Dataset Accuracy: {accuracy:.2f}')
+    # Standardize features
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # Initialize KNN classifier
+    knn = KNNClassifier()
+
+    # Hyperparameter tuning
+    best_k = tune_hyperparameters(X_train, y_train)
+    knn.set_k(best_k)
+
+    # Fit the model
+    knn.fit(X_train, y_train)
+
+    # Predictions
+    y_pred = knn.predict(X_test)
+
+    # Performance metrics
+    print(classification_report(y_test, y_pred))
+    print(confusion_matrix(y_test, y_pred))
+
+    # Perform cross-validation
+    perform_cross_validation(knn.model, X_train, y_train)
+
+if __name__ == "__main__":
+    main()
